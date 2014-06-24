@@ -1,25 +1,16 @@
 package me.blackvein.quests;
 
-import com.codisimus.plugins.phatloots.PhatLootsAPI;
-import com.codisimus.plugins.phatloots.loot.CommandLoot;
-import com.codisimus.plugins.phatloots.loot.LootBundle;
-import com.gmail.nossr50.datatypes.skills.SkillType;
-import com.gmail.nossr50.util.player.UserManager;
-import com.herocraftonline.heroes.characters.Hero;
 import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import java.util.HashMap;
-
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
 import me.blackvein.quests.exceptions.InvalidStageException;
 import me.blackvein.quests.util.ItemUtil;
 import me.blackvein.quests.util.Lang;
 import net.citizensnpcs.api.npc.NPC;
-
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -49,10 +40,6 @@ public class Quest {
     List<String> neededQuests = new LinkedList<String>();
     List<String> blockQuests = new LinkedList<String>();
     List<String> permissionReqs = new LinkedList<String>();
-    List<String> mcMMOSkillReqs = new LinkedList<String>();
-    List<Integer> mcMMOAmountReqs = new LinkedList<Integer>();
-    String heroesPrimaryClassReq = null;
-    String heroesSecondaryClassReq = null;
     Map<String, Map<String, Object>> customRequirements = new HashMap<String, Map<String, Object>>();
     Map<String, Map<String, Object>> customRewards = new HashMap<String, Map<String, Object>>();
     
@@ -66,13 +53,6 @@ public class Quest {
     List<String> commands = new LinkedList<String>();
     List<String> permissions = new LinkedList<String>();
     LinkedList<ItemStack> itemRewards = new LinkedList<ItemStack>();
-    LinkedList<Integer> rpgItemRewardIDs = new LinkedList<Integer>();
-    LinkedList<Integer> rpgItemRewardAmounts = new LinkedList<Integer>();
-    List<String> mcmmoSkills = new LinkedList<String>();
-    List<Integer> mcmmoAmounts = new LinkedList<Integer>();
-    List<String> heroesClasses = new LinkedList<String>();
-    List<Double> heroesAmounts = new LinkedList<Double>();
-    List<String> phatLootRewards = new LinkedList<String>();
     //
     
     public void nextStage(Quester q) {
@@ -203,33 +183,7 @@ public class Quest {
             }
 
         }
-
-        for (String s : mcMMOSkillReqs) {
-
-            final SkillType st = Quests.getMcMMOSkill(s);
-            final int lvl = mcMMOAmountReqs.get(mcMMOSkillReqs.indexOf(s));
-            if (UserManager.getPlayer(player).getProfile().getSkillLevel(st) < lvl) {
-                return false;
-            }
-
-        }
-
-        if (heroesPrimaryClassReq != null) {
-
-            if (plugin.testPrimaryHeroesClass(heroesPrimaryClassReq, player.getName()) == false) {
-                return false;
-            }
-
-        }
-
-        if (heroesSecondaryClassReq != null) {
-
-            if (plugin.testSecondaryHeroesClass(heroesSecondaryClassReq, player.getName()) == false) {
-                return false;
-            }
-
-        }
-        
+      
         for (String s : customRequirements.keySet()){
             
             CustomRequirement found = null;
@@ -309,57 +263,6 @@ public class Quest {
 
         }
 
-        for (String s : mcmmoSkills) {
-
-            UserManager.getPlayer(player).getProfile().addLevels(Quests.getMcMMOSkill(s), mcmmoAmounts.get(mcmmoSkills.indexOf(s)));
-            none = null;
-
-        }
-
-        for (String s : heroesClasses) {
-
-            Hero hero = plugin.getHero(player.getName());
-            hero.addExp(heroesAmounts.get(heroesClasses.indexOf(s)), Quests.heroes.getClassManager().getClass(s), player.getLocation());
-            none = null;
-
-        }
-
-        LinkedList<ItemStack> phatLootItems = new LinkedList<ItemStack>();
-        int phatLootExp = 0;
-        int phatLootMoney = 0;
-
-        LinkedList<String> phatLootMessages = new LinkedList<String>();
-
-        for(String s : phatLootRewards) {
-
-            LootBundle lb = PhatLootsAPI.getPhatLoot(s).rollForLoot();
-
-            if(lb.getExp() > 0){
-                phatLootExp += lb.getExp();
-                player.giveExp(lb.getExp());
-            }
-
-            if(lb.getMoney() > 0){
-                phatLootMoney += lb.getMoney();
-                Quests.economy.depositPlayer(player.getName(), lb.getMoney());
-            }
-
-            if(lb.getItemList().isEmpty() == false){
-                phatLootItems.addAll(lb.getItemList());
-                for(ItemStack is : lb.getItemList())
-                    Quests.addItem(player, is);
-            }
-
-            if(lb.getCommandList().isEmpty() == false){
-                for(CommandLoot cl : lb.getCommandList())
-                    cl.execute(player);
-            }
-
-            if(lb.getMessageList().isEmpty() == false)
-                phatLootMessages.addAll(lb.getMessageList());
-
-        }
-
         if (exp > 0) {
             player.giveExp(exp);
             none = null;
@@ -400,35 +303,7 @@ public class Quest {
             }
 
             none = null;
-        }
-
-        for (ItemStack i : phatLootItems) {
-
-            if (i.hasItemMeta() && i.getItemMeta().hasDisplayName()) {
-                
-                if(i.getEnchantments().isEmpty())
-                    player.sendMessage("- " + ChatColor.DARK_AQUA + ChatColor.ITALIC + i.getItemMeta().getDisplayName() + ChatColor.RESET + ChatColor.GRAY + " x " + i.getAmount());
-                else
-                    player.sendMessage("- " + ChatColor.DARK_AQUA + ChatColor.ITALIC + i.getItemMeta().getDisplayName() + ChatColor.RESET + ChatColor.GRAY + " x " + i.getAmount() + ChatColor.DARK_PURPLE + " *Enchanted*");
-            
-            } else if (i.getDurability() != 0) {
-                
-                if(i.getEnchantments().isEmpty())
-                    player.sendMessage("- " + ChatColor.DARK_GREEN + Quester.prettyItemString(i.getTypeId()) + ":" + i.getDurability() + ChatColor.GRAY + " x " + i.getAmount());
-                else
-                    player.sendMessage("- " + ChatColor.DARK_GREEN + Quester.prettyItemString(i.getTypeId()) + ":" + i.getDurability() + ChatColor.GRAY + " x " + i.getAmount() + ChatColor.DARK_PURPLE + " *Enchanted*");
-            
-            } else {
-                
-                if(i.getEnchantments().isEmpty())
-                    player.sendMessage("- " + ChatColor.DARK_GREEN + Quester.prettyItemString(i.getTypeId()) + ChatColor.GRAY + " x " + i.getAmount());
-                else
-                    player.sendMessage("- " + ChatColor.DARK_GREEN + Quester.prettyItemString(i.getTypeId()) + ChatColor.GRAY + " x " + i.getAmount() + ChatColor.DARK_PURPLE + " *Enchanted*");
-                
-            }
-
-            none = null;
-        }
+        }     
 
         if (moneyReward > 1) {
             player.sendMessage("- " + ChatColor.DARK_GREEN + moneyReward + " " + ChatColor.DARK_PURPLE + Quests.getCurrency(true));
@@ -438,33 +313,12 @@ public class Quest {
             none = null;
         }
 
-        if (exp > 0 || phatLootExp > 0) {
+        if (exp > 0) {
 
-            int tot = exp + phatLootExp;
+            int tot = exp;
             player.sendMessage("- " + ChatColor.DARK_GREEN + tot + ChatColor.DARK_PURPLE + " Experience");
             none = null;
-        }
-
-        if (mcmmoSkills.isEmpty() == false) {
-            for (String s : mcmmoSkills) {
-                player.sendMessage("- " + ChatColor.DARK_GREEN + mcmmoAmounts.get(mcmmoSkills.indexOf(s)) + " " + ChatColor.DARK_PURPLE + s + " Experience");
-            }
-            none = null;
-        }
-
-        if (heroesClasses.isEmpty() == false) {
-            for (String s : heroesClasses) {
-                player.sendMessage("- " + ChatColor.AQUA + heroesAmounts.get(heroesClasses.indexOf(s)) + " " + ChatColor.BLUE + s + " Experience");
-            }
-            none = null;
-        }
-
-        if(phatLootMessages.isEmpty() == false) {
-            for (String s : phatLootMessages){
-                player.sendMessage("- " + s);
-            }
-            none = null;
-        }
+        }       
         
         for (String s : customRewards.keySet()){
             
@@ -594,34 +448,6 @@ public class Quest {
                 return false;
             }
 
-            if (other.rpgItemRewardIDs.equals(rpgItemRewardIDs) == false) {
-                return false;
-            }
-
-            if (other.rpgItemRewardAmounts.equals(rpgItemRewardAmounts) == false) {
-                return false;
-            }
-
-            if (other.mcmmoAmounts.equals(mcmmoAmounts) == false) {
-                return false;
-            }
-
-            if (other.mcmmoSkills.equals(mcmmoSkills) == false) {
-                return false;
-            }
-
-            if (other.heroesClasses.equals(heroesClasses) == false) {
-                return false;
-            }
-
-            if (other.heroesAmounts.equals(heroesAmounts) == false) {
-                return false;
-            }
-
-            if(other.phatLootRewards.equals(phatLootRewards) == false) {
-                return false;
-            }
-
             if (other.moneyReq != moneyReq) {
                 return false;
             }
@@ -655,26 +481,6 @@ public class Quest {
             if (other.permissionReqs.equals(permissionReqs) == false) {
                 return false;
             }
-
-            if (other.heroesPrimaryClassReq != null && heroesPrimaryClassReq != null) {
-                if (other.heroesPrimaryClassReq.equals(heroesPrimaryClassReq) == false) {
-                    return false;
-                }
-            } else if (other.heroesPrimaryClassReq != null && heroesPrimaryClassReq == null) {
-                return false;
-            } else if (other.heroesPrimaryClassReq == null && heroesPrimaryClassReq != null) {
-                return false;
-            }
-
-            if (other.heroesSecondaryClassReq != null && heroesSecondaryClassReq != null) {
-                if (other.heroesSecondaryClassReq.equals(heroesSecondaryClassReq) == false) {
-                    return false;
-                }
-            } else if (other.heroesSecondaryClassReq != null && heroesSecondaryClassReq == null) {
-                return false;
-            } else if (other.heroesSecondaryClassReq == null && heroesSecondaryClassReq != null) {
-                return false;
-            }
             
             if (other.customRequirements.equals(customRequirements) == false){
                 return false;
@@ -685,14 +491,6 @@ public class Quest {
             }
 
             if (other.permissions.equals(permissions) == false) {
-                return false;
-            }
-
-            if (other.mcMMOSkillReqs.equals(mcMMOSkillReqs) == false) {
-                return false;
-            }
-
-            if (other.mcMMOAmountReqs.equals(mcMMOAmountReqs) == false) {
                 return false;
             }
 

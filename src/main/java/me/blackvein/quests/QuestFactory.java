@@ -1,9 +1,6 @@
 package me.blackvein.quests;
 
 import com.sk89q.worldguard.protection.managers.RegionManager;
-
-import me.blackvein.quests.util.ColorUtil;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -13,15 +10,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import me.blackvein.quests.prompts.ItemStackPrompt;
-
 import me.blackvein.quests.prompts.RequirementsPrompt;
 import me.blackvein.quests.prompts.RewardsPrompt;
 import me.blackvein.quests.prompts.StagesPrompt;
 import me.blackvein.quests.util.CK;
+import me.blackvein.quests.util.ColorUtil;
 import me.blackvein.quests.util.ItemUtil;
 import me.blackvein.quests.util.Lang;
 import net.citizensnpcs.api.CitizensAPI;
-
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Location;
@@ -32,7 +28,14 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.conversations.*;
+import org.bukkit.conversations.ConversationAbandonedEvent;
+import org.bukkit.conversations.ConversationAbandonedListener;
+import org.bukkit.conversations.ConversationContext;
+import org.bukkit.conversations.ConversationFactory;
+import org.bukkit.conversations.FixedSetPrompt;
+import org.bukkit.conversations.NumericPrompt;
+import org.bukkit.conversations.Prompt;
+import org.bukkit.conversations.StringPrompt;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -1773,26 +1776,8 @@ public class QuestFactory implements ConversationAbandonedListener, ColorUtil {
             cc.setSessionData(CK.REQ_QUEST_BLOCK, q.blockQuests);
         }
 
-        if (q.mcMMOSkillReqs.isEmpty() == false) {
-            cc.setSessionData(CK.REQ_MCMMO_SKILLS, q.mcMMOSkillReqs);
-            cc.setSessionData(CK.REQ_MCMMO_SKILL_AMOUNTS, q.mcMMOAmountReqs);
-        }
-
         if (q.permissionReqs.isEmpty() == false) {
             cc.setSessionData(CK.REQ_PERMISSION, q.permissionReqs);
-        }
-
-        if (q.heroesPrimaryClassReq != null) {
-            cc.setSessionData(CK.REQ_HEROES_PRIMARY_CLASS, q.heroesPrimaryClassReq);
-        }
-
-        if (q.heroesSecondaryClassReq != null) {
-            cc.setSessionData(CK.REQ_HEROES_SECONDARY_CLASS, q.heroesSecondaryClassReq);
-        }
-
-        if (q.mcMMOSkillReqs.isEmpty() == false) {
-            cc.setSessionData(CK.REQ_MCMMO_SKILLS, q.mcMMOSkillReqs);
-            cc.setSessionData(CK.REQ_MCMMO_SKILL_AMOUNTS, q.mcMMOAmountReqs);
         }
 
         if (q.failRequirements != null) {
@@ -1840,25 +1825,6 @@ public class QuestFactory implements ConversationAbandonedListener, ColorUtil {
 
         if (q.permissions.isEmpty() == false) {
             cc.setSessionData(CK.REW_PERMISSION, q.permissions);
-        }
-
-        if (q.mcmmoSkills.isEmpty() == false) {
-            cc.setSessionData(CK.REW_MCMMO_SKILLS, q.mcmmoSkills);
-            cc.setSessionData(CK.REW_MCMMO_AMOUNTS, q.mcmmoAmounts);
-        }
-
-        if (q.heroesClasses.isEmpty() == false) {
-            cc.setSessionData(CK.REW_HEROES_CLASSES, q.heroesClasses);
-            cc.setSessionData(CK.REW_HEROES_AMOUNTS, q.heroesAmounts);
-        }
-
-        if (q.heroesClasses.isEmpty() == false) {
-            cc.setSessionData(CK.REW_HEROES_CLASSES, q.heroesClasses);
-            cc.setSessionData(CK.REW_HEROES_AMOUNTS, q.heroesAmounts);
-        }
-
-        if (q.phatLootRewards.isEmpty() == false) {
-            cc.setSessionData(CK.REW_PHAT_LOOTS, q.phatLootRewards);
         }
 
         if (q.customRewards.isEmpty() == false) {

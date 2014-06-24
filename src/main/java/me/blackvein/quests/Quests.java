@@ -1,11 +1,24 @@
 package me.blackvein.quests;
 
+import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
+import com.sk89q.worldguard.protection.managers.RegionManager;
+import com.sk89q.worldguard.protection.regions.ProtectedRegion;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.net.URLConnection;
+import java.net.URLEncoder;
+import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -13,15 +26,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import me.blackvein.quests.exceptions.InvalidStageException;
 import me.blackvein.quests.prompts.QuestAcceptPrompt;
 import me.blackvein.quests.util.ColorUtil;
 import me.blackvein.quests.util.ItemUtil;
 import me.blackvein.quests.util.Lang;
-import me.blackvein.quests.util.MiscUtil;
 import net.aufdemrand.denizen.Denizen;
 import net.aufdemrand.denizen.scripts.ScriptRegistry;
 import net.citizensnpcs.api.CitizensAPI;
@@ -30,7 +43,6 @@ import net.citizensnpcs.api.npc.NPC;
 import net.milkbowl.vault.Vault;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.permission.Permission;
-
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
@@ -63,40 +75,12 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import com.codisimus.plugins.phatloots.PhatLoots;
-import com.codisimus.plugins.phatloots.PhatLootsAPI;
-import com.gmail.nossr50.mcMMO;
-import com.gmail.nossr50.datatypes.player.McMMOPlayer;
-import com.gmail.nossr50.datatypes.skills.SkillType;
-import com.gmail.nossr50.util.player.UserManager;
-import com.herocraftonline.heroes.Heroes;
-import com.herocraftonline.heroes.characters.Hero;
-import com.herocraftonline.heroes.characters.classes.HeroClass;
-import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
-import com.sk89q.worldguard.protection.managers.RegionManager;
-import com.sk89q.worldguard.protection.regions.ProtectedRegion;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.lang.reflect.Constructor;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.net.URLConnection;
-import java.net.URLEncoder;
-import java.sql.Date;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-
 public class Quests extends JavaPlugin implements ConversationAbandonedListener, ColorUtil {
 
     public final static Logger log = Logger.getLogger("Minecraft");
     public static Economy economy = null;
     public static Permission permission = null;
     public static WorldGuardPlugin worldGuard = null;
-    public static mcMMO mcmmo = null;
-    public static Heroes heroes = null;
-    public static PhatLoots phatLoots = null;
     public static boolean snoop = true;
     public static boolean npcEffects = true;
     public static boolean broadcastPartyCreation = true;
@@ -190,18 +174,6 @@ public class Quests extends JavaPlugin implements ConversationAbandonedListener,
 
         if (getServer().getPluginManager().getPlugin("Denizen") != null) {
             denizen = (Denizen) getServer().getPluginManager().getPlugin("Denizen");
-        }
-
-        if (getServer().getPluginManager().getPlugin("mcMMO") != null) {
-            mcmmo = (mcMMO) getServer().getPluginManager().getPlugin("mcMMO");
-        }
-
-        if (getServer().getPluginManager().getPlugin("Heroes") != null) {
-            heroes = (Heroes) getServer().getPluginManager().getPlugin("Heroes");
-        }
-        
-        if (getServer().getPluginManager().getPlugin("PhatLoots") != null) {
-            phatLoots = (PhatLoots) getServer().getPluginManager().getPlugin("PhatLoots");
         }
 
         if (!setupEconomy()) {
@@ -701,45 +673,7 @@ public class Quests extends JavaPlugin implements ConversationAbandonedListener,
 
                                         }
 
-                                    }
-
-                                    if (quest.heroesPrimaryClassReq != null) {
-
-                                        if (this.testPrimaryHeroesClass(quest.heroesPrimaryClassReq, player.getName())) {
-                                            cs.sendMessage(BOLD + "" + GREEN + quest.heroesPrimaryClassReq + RESET + "" + DARKGREEN + " class");
-                                        } else {
-                                            cs.sendMessage(BOLD + "" + DARKRED + quest.heroesPrimaryClassReq + RESET + "" + RED + " class");
-                                        }
-
-                                    }
-
-                                    if (quest.heroesSecondaryClassReq != null) {
-
-                                        if (this.testSecondaryHeroesClass(quest.heroesSecondaryClassReq, player.getName())) {
-                                            cs.sendMessage(BOLD + "" + DARKRED + quest.heroesSecondaryClassReq + RESET + "" + RED + " class");
-                                        } else {
-                                            cs.sendMessage(BOLD + "" + GREEN + quest.heroesSecondaryClassReq + RESET + "" + DARKGREEN + " class");
-                                        }
-
-                                    }
-
-                                    if (quest.mcMMOSkillReqs.isEmpty() == false) {
-
-                                        for (String skill : quest.mcMMOSkillReqs) {
-
-                                            int level = Quests.getMCMMOSkillLevel(Quests.getMcMMOSkill(skill), player.getName());
-                                            int req = quest.mcMMOAmountReqs.get(quest.mcMMOSkillReqs.indexOf(skill));
-                                            String skillName = MiscUtil.getCapitalized(skill);
-
-                                            if (level >= req) {
-                                                cs.sendMessage(GREEN + skillName + " level " + req);
-                                            } else {
-                                                cs.sendMessage(RED + skillName + " level " + req);
-                                            }
-
-                                        }
-
-                                    }
+                                    }                                    
 
                                     if (quest.questPointsReq != 0) {
 
@@ -2306,74 +2240,6 @@ public class Quests extends JavaPlugin implements ConversationAbandonedListener,
 
                     }
 
-                    if (config.contains("quests." + s + ".requirements.mcmmo-skills")) {
-
-                        if (Quests.checkList(config.getList("quests." + s + ".requirements.mcmmo-skills"), String.class)) {
-
-                            if (config.contains("quests." + s + ".requirements.mcmmo-amounts")) {
-
-                                if (Quests.checkList(config.getList("quests." + s + ".requirements.mcmmo-amounts"), Integer.class)) {
-
-                                    List<String> skills = config.getStringList("quests." + s + ".requirements.mcmmo-skills");
-                                    List<Integer> amounts = config.getIntegerList("quests." + s + ".requirements.mcmmo-amounts");
-
-                                    if (skills.size() != amounts.size()) {
-                                        printSevere("[Quests] mcmmo-skills: and mcmmo-amounts: in requirements: for Quest " + quest.name + " are not the same size!");
-                                        continue;
-                                    }
-
-                                    quest.mcMMOSkillReqs.addAll(skills);
-                                    quest.mcMMOAmountReqs.addAll(amounts);
-
-                                } else {
-                                    printSevere("[Quests] mcmmo-amounts: Requirement for Quest " + quest.name + " is not a list of numbers!");
-                                    continue;
-                                }
-
-                            } else {
-                                printSevere("[Quests] Requirements for Quest " + quest.name + " is missing mcmmo-amounts:");
-                                continue;
-                            }
-
-                        } else {
-                            printSevere("[Quests] mcmmo-skills: Requirement for Quest " + quest.name + " is not a list of skills!");
-                            continue;
-                        }
-
-                    }
-
-                    if (config.contains("quests." + s + ".requirements.heroes-primary-class")) {
-
-                        String className = config.getString("quests." + s + ".requirements.heroes-primary-class");
-                        HeroClass hc = heroes.getClassManager().getClass(className);
-                        if (hc != null && hc.isPrimary()) {
-                            quest.heroesPrimaryClassReq = hc.getName();
-                        } else if (hc != null) {
-                            printSevere("[Quests] heroes-primary-class: Requirement for Quest " + quest.name + " is not a primary Heroes class!");
-                            continue;
-                        } else {
-                            printSevere("[Quests] heroes-primary-class: Requirement for Quest " + quest.name + " is not a valid Heroes class!");
-                            continue;
-                        }
-
-                    }
-
-                    if (config.contains("quests." + s + ".requirements.heroes-secondary-class")) {
-
-                        String className = config.getString("quests." + s + ".requirements.heroes-secondary-class");
-                        HeroClass hc = heroes.getClassManager().getClass(className);
-                        if (hc != null && hc.isSecondary()) {
-                            quest.heroesSecondaryClassReq = hc.getName();
-                        } else if (hc != null) {
-                            printSevere("[Quests] heroes-secondary-class: Requirement for Quest " + quest.name + " is not a secondary Heroes class!");
-                            continue;
-                        } else {
-                            printSevere("[Quests] heroes-secondary-class: Requirement for Quest " + quest.name + " is not a valid Heroes class!");
-                            continue;
-                        }
-
-                    }
-
                     if (config.contains("quests." + s + ".requirements.custom-requirements")) {
 
                         ConfigurationSection sec = config.getConfigurationSection("quests." + s + ".requirements.custom-requirements");
@@ -3697,122 +3563,7 @@ public class Quests extends JavaPlugin implements ConversationAbandonedListener,
                     }
 
                 }
-
-                if (config.contains("quests." + s + ".rewards.mcmmo-skills")) {
-
-                    if (Quests.checkList(config.getList("quests." + s + ".rewards.mcmmo-skills"), String.class)) {
-
-                        if (config.contains("quests." + s + ".rewards.mcmmo-levels")) {
-
-                            if (Quests.checkList(config.getList("quests." + s + ".rewards.mcmmo-levels"), Integer.class)) {
-
-                                boolean failed = false;
-                                for (String skill : config.getStringList("quests." + s + ".rewards.mcmmo-skills")) {
-
-                                    if (Quests.getMcMMOSkill(skill) == null) {
-                                        printSevere("[Quests] " + skill + " in mcmmo-skills: Reward in Quest " + quest.name + " is not a valid mcMMO skill name!");
-                                        failed = true;
-                                        break;
-                                    }
-
-                                }
-                                if (failed) {
-                                    continue;
-                                }
-
-                                quest.mcmmoSkills.clear();
-                                quest.mcmmoAmounts.clear();
-
-                                quest.mcmmoSkills.addAll(config.getStringList("quests." + s + ".rewards.mcmmo-skills"));
-                                quest.mcmmoAmounts.addAll(config.getIntegerList("quests." + s + ".rewards.mcmmo-levels"));
-
-                            } else {
-                                printSevere("[Quests] mcmmo-levels: Reward in Quest " + quest.name + " is not a list of numbers!");
-                                continue;
-                            }
-
-                        } else {
-                            printSevere("[Quests] Rewards for Quest " + quest.name + " is missing mcmmo-levels:");
-                            continue;
-                        }
-
-                    } else {
-                        printSevere("[Quests] mcmmo-skills: Reward in Quest " + quest.name + " is not a list of mcMMO skill names!");
-                        continue;
-                    }
-                }
-
-                if (config.contains("quests." + s + ".rewards.heroes-exp-classes")) {
-
-                    if (Quests.checkList(config.getList("quests." + s + ".rewards.heroes-exp-classes"), String.class)) {
-
-                        if (config.contains("quests." + s + ".rewards.heroes-exp-amounts")) {
-
-                            if (Quests.checkList(config.getList("quests." + s + ".rewards.heroes-exp-amounts"), Double.class)) {
-
-                                boolean failed = false;
-                                for (String heroClass : config.getStringList("quests." + s + ".rewards.heroes-exp-classes")) {
-
-                                    if (Quests.heroes.getClassManager().getClass(heroClass) == null) {
-                                        printSevere("[Quests] " + heroClass + " in heroes-exp-classes: Reward in Quest " + quest.name + " is not a valid Heroes class name!");
-                                        failed = true;
-                                        break;
-                                    }
-
-                                }
-                                if (failed) {
-                                    continue;
-                                }
-
-                                quest.heroesClasses.clear();
-                                quest.heroesAmounts.clear();
-
-                                quest.heroesClasses.addAll(config.getStringList("quests." + s + ".rewards.heroes-exp-classes"));
-                                quest.heroesAmounts.addAll(config.getDoubleList("quests." + s + ".rewards.heroes-exp-amounts"));
-
-                            } else {
-                                printSevere("[Quests] heroes-exp-amounts: Reward in Quest " + quest.name + " is not a list of experience amounts (decimal numbers)!");
-                                continue;
-                            }
-
-                        } else {
-                            printSevere("[Quests] Rewards for Quest " + quest.name + " is missing heroes-exp-amounts:");
-                            continue;
-                        }
-
-                    } else {
-                        printSevere("[Quests] heroes-exp-classes: Reward in Quest " + quest.name + " is not a list of Heroes classes!");
-                        continue;
-                    }
-                }
-
-                if (config.contains("quests." + s + ".rewards.phat-loots")) {
-
-                    if (Quests.checkList(config.getList("quests." + s + ".rewards.phat-loots"), String.class)) {
-
-                        boolean failed = false;
-                        for (String loot : config.getStringList("quests." + s + ".rewards.phat-loots")) {
-
-                            if (PhatLootsAPI.getPhatLoot(loot) == null) {
-                                printSevere("[Quests] " + loot + " in phat-loots: Reward in Quest " + quest.name + " is not a valid PhatLoot name!");
-                                failed = true;
-                                break;
-                            }
-
-                        }
-                        if (failed) {
-                            continue;
-                        }
-
-                        quest.phatLootRewards.clear();
-                        quest.phatLootRewards.addAll(config.getStringList("quests." + s + ".rewards.phat-loots"));
-
-                    } else {
-                        printSevere("[Quests] phat-loots: Reward in Quest " + quest.name + " is not a list of PhatLoots!");
-                        continue;
-                    }
-                }
-                
+ 
                 if (config.contains("quests." + s + ".rewards.custom-rewards")) {
 
                     ConfigurationSection sec = config.getConfigurationSection("quests." + s + ".rewards.custom-rewards");
@@ -4428,40 +4179,6 @@ public class Quests extends JavaPlugin implements ConversationAbandonedListener,
 
     }
 
-    public static SkillType getMcMMOSkill(String s) {
-
-        if (s.equalsIgnoreCase("Acrobatics")) {
-            return SkillType.ACROBATICS;
-        } else if (s.equalsIgnoreCase("Archery")) {
-            return SkillType.ARCHERY;
-        } else if (s.equalsIgnoreCase("Axes")) {
-            return SkillType.AXES;
-        } else if (s.equalsIgnoreCase("Excavation")) {
-            return SkillType.EXCAVATION;
-        } else if (s.equalsIgnoreCase("Fishing")) {
-            return SkillType.FISHING;
-        } else if (s.equalsIgnoreCase("Herbalism")) {
-            return SkillType.HERBALISM;
-        } else if (s.equalsIgnoreCase("Mining")) {
-            return SkillType.MINING;
-        } else if (s.equalsIgnoreCase("Repair")) {
-            return SkillType.REPAIR;
-        } else if (s.equalsIgnoreCase("Smelting")) {
-            return SkillType.SMELTING;
-        } else if (s.equalsIgnoreCase("Swords")) {
-            return SkillType.SWORDS;
-        } else if (s.equalsIgnoreCase("Taming")) {
-            return SkillType.TAMING;
-        } else if (s.equalsIgnoreCase("Unarmed")) {
-            return SkillType.UNARMED;
-        } else if (s.equalsIgnoreCase("Woodcutting")) {
-            return SkillType.WOODCUTTING;
-        } else {
-            return null;
-        }
-
-    }
-
     public static void addItem(Player p, ItemStack i) {
 
         PlayerInventory inv = p.getInventory();
@@ -5065,42 +4782,6 @@ public class Quests extends JavaPlugin implements ConversationAbandonedListener,
         return false;
     }
 
-    public static int getMCMMOSkillLevel(SkillType st, String player) {
-
-        McMMOPlayer mPlayer = UserManager.getPlayer(player);
-        if (mPlayer == null) {
-            return -1;
-        }
-
-        return mPlayer.getProfile().getSkillLevel(st);
-
-    }
-
-    public Hero getHero(String player) {
-
-        Player p = getServer().getPlayer(player);
-        if (p == null) {
-            return null;
-        }
-
-        return heroes.getCharacterManager().getHero(p);
-
-    }
-
-    public boolean testPrimaryHeroesClass(String primaryClass, String player) {
-
-        Hero hero = getHero(player);
-        return hero.getHeroClass().getName().equalsIgnoreCase(primaryClass);
-
-    }
-
-    public boolean testSecondaryHeroesClass(String secondaryClass, String player) {
-
-        Hero hero = getHero(player);
-        return hero.getHeroClass().getName().equalsIgnoreCase(secondaryClass);
-
-    }
-    
     public void updateData() {
         
         YamlConfiguration config = new YamlConfiguration();
